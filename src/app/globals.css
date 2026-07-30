@@ -1,0 +1,160 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.65rem;
+
+  /* Warm neutral base */
+  --background: #FAFAF7;
+  --foreground: #1C1917;
+
+  --card: #FFFFFF;
+  --card-foreground: #1C1917;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #1C1917;
+
+  /* Deep teal — primary brand */
+  --primary: #1F4E52;
+  --primary-foreground: #F6FAF9;
+
+  /* Ochre — accent for achievements / grades */
+  --secondary: #F1EAE0;
+  --secondary-foreground: #43331B;
+
+  --muted: #F0EEE9;
+  --muted-foreground: #6B655C;
+
+  --accent: #C77D2E;
+  --accent-foreground: #FFFFFF;
+
+  --destructive: #B8433D;
+  --destructive-foreground: #FFFFFF;
+
+  --success: #3F7D53;
+  --success-foreground: #FFFFFF;
+
+  --warning: #C77D2E;
+  --warning-foreground: #FFFFFF;
+
+  --border: #E4E0D8;
+  --input: #E4E0D8;
+  --ring: #1F4E52;
+
+  --chart-1: #1F4E52;
+  --chart-2: #C77D2E;
+  --chart-3: #3F7D53;
+  --chart-4: #7A6E5A;
+  --chart-5: #B8433D;
+
+  --sidebar: #163336;
+  --sidebar-foreground: #EAF2F1;
+  --sidebar-primary: #C77D2E;
+  --sidebar-primary-foreground: #1C1917;
+  --sidebar-accent: #1F4E52;
+  --sidebar-accent-foreground: #EAF2F1;
+  --sidebar-border: #234D51;
+  --sidebar-ring: #C77D2E;
+}
+
+.dark {
+  --background: #14201F;
+  --foreground: #EAF2F1;
+  --card: #1A2827;
+  --card-foreground: #EAF2F1;
+  --popover: #1A2827;
+  --popover-foreground: #EAF2F1;
+  --primary: #4C9297;
+  --primary-foreground: #0D1817;
+  --secondary: #2A2521;
+  --secondary-foreground: #EFE4D2;
+  --muted: #223130;
+  --muted-foreground: #9AA6A4;
+  --accent: #D98F42;
+  --accent-foreground: #14201F;
+  --destructive: #D8615A;
+  --destructive-foreground: #14201F;
+  --success: #5CA274;
+  --success-foreground: #0D1817;
+  --warning: #D98F42;
+  --warning-foreground: #14201F;
+  --border: #2A3A38;
+  --input: #2A3A38;
+  --ring: #4C9297;
+  --sidebar: #0F1E1D;
+  --sidebar-foreground: #EAF2F1;
+  --sidebar-primary: #D98F42;
+  --sidebar-primary-foreground: #14201F;
+  --sidebar-accent: #1F4E52;
+  --sidebar-accent-foreground: #EAF2F1;
+  --sidebar-border: #1E3230;
+  --sidebar-ring: #D98F42;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono-data);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+  .font-mono-data {
+    font-family: var(--font-mono-data);
+  }
+}
