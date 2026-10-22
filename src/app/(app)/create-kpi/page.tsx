@@ -65,6 +65,7 @@ function CreateKpiInner() {
   const [recentKpis, setRecentKpis] = useState<KpiAssignment[]>([]);
   const [isLoadingRecent, setIsLoadingRecent] = useState(true);
   const [deletingRecentId, setDeletingRecentId] = useState<number | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<KpiAssignment | null>(null);
 
   // ---- details / edit dialog state ----
   const [selectedKpi, setSelectedKpi] = useState<KpiAssignment | null>(null);
@@ -251,45 +252,26 @@ function CreateKpiInner() {
     }
   }
 
-  async function handleDeleteKpi() {
-    if (!selectedKpi) return;
-    if (!confirm("Delete this KPI assignment?")) return;
+  async function confirmDeleteKpi() {
+    if (!deleteCandidate) return;
+    const assignmentId = deleteCandidate.assignmentId;
     setIsDeleting(true);
+    setDeletingRecentId(assignmentId);
     try {
-      await apiClient.deleteKpi(selectedKpi.assignmentId);
+      await apiClient.deleteKpi(assignmentId);
       toast.success("KPI assignment deleted.");
-      setDetailsOpen(false);
-      setSelectedKpi(null);
-      loadRecentKpis();
+      setRecentKpis((current) =>
+        current.filter((item) => item.assignmentId !== assignmentId),
+      );
+      if (selectedKpi?.assignmentId === assignmentId) {
+        setDetailsOpen(false);
+        setSelectedKpi(null);
+      }
+      setDeleteCandidate(null);
     } catch {
       toast.error("Could not delete KPI assignment.");
     } finally {
       setIsDeleting(false);
-    }
-  }
-
-  async function handleDeleteRecent(kpi: KpiAssignment) {
-    if (
-      !confirm(
-        `Delete the KPI assignment for ${kpi.employeeName}? This cannot be undone.`,
-      )
-    )
-      return;
-
-    setDeletingRecentId(kpi.assignmentId);
-    try {
-      await apiClient.deleteKpi(kpi.assignmentId);
-      setRecentKpis((current) =>
-        current.filter((item) => item.assignmentId !== kpi.assignmentId),
-      );
-      if (selectedKpi?.assignmentId === kpi.assignmentId) {
-        setDetailsOpen(false);
-        setSelectedKpi(null);
-      }
-      toast.success("KPI assignment deleted.");
-    } catch {
-      toast.error("Could not delete KPI assignment.");
-    } finally {
       setDeletingRecentId(null);
     }
   }
@@ -468,7 +450,7 @@ function CreateKpiInner() {
                         aria-label={`Delete KPI assignment for ${a.employeeName}`}
                         onClick={(event) => {
                           event.stopPropagation();
-                          handleDeleteRecent(a);
+                          setDeleteCandidate(a);
                         }}
                       >
                         {deletingRecentId === a.assignmentId ? (
@@ -610,7 +592,7 @@ function CreateKpiInner() {
                   {!editMode && (
                     <Button
                       variant="destructive"
-                      onClick={handleDeleteKpi}
+                      onClick={() => setDeleteCandidate(selectedKpi)}
                       disabled={isDeleting}
                     >
                       {isDeleting ? (
@@ -673,6 +655,52 @@ function CreateKpiInner() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!deleteCandidate}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteCandidate(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Trash2 className="h-5 w-5" />
+            </div>
+            <DialogTitle>Delete KPI assignment?</DialogTitle>
+            <DialogDescription>
+              {deleteCandidate && (
+                <>
+                  The KPI assignment for {deleteCandidate.employeeName} in{" "}
+                  {deleteCandidate.periodName} will be permanently deleted.
+                  This action cannot be undone.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteCandidate(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteKpi}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              Delete assignment
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
