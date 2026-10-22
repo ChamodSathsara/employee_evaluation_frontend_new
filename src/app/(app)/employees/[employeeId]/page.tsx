@@ -152,6 +152,27 @@ export default function EmployeeDetailPage() {
     }
   }
 
+  async function handleAddCustomCompetency(input: {
+    name: string;
+    description: string;
+    score: number;
+    remarks?: string;
+  }) {
+    if (!detail?.hodEvaluationId) {
+      toast.error("Start your HOD evaluation (save KPI marks) before adding a competency.");
+      throw new Error("HOD evaluation has not been created.");
+    }
+
+    try {
+      await apiClient.createCustomCompetencyEvaluation(detail.hodEvaluationId, input);
+      toast.success("Custom competency and score added.");
+      if (selected) await loadDetail(selected.assignmentId);
+    } catch (error) {
+      toast.error("Could not add the custom competency.");
+      throw error;
+    }
+  }
+
   // ---------- Achievements (HOD only) ----------
   async function handleAddAchievement(input: {
     achievementTypeId: number;
@@ -300,9 +321,32 @@ export default function EmployeeDetailPage() {
               {isHod && (
                 <TabsContent value="competencies">
                   <CompetenciesForm
-                    competencies={competencies}
+                    key={(detail?.competencies ?? [])
+                      .map((line) => `${line.competencyId}:${line.score ?? 0}`)
+                      .join("|")}
+                    competencies={[
+                      ...competencies,
+                      ...(detail?.competencies ?? [])
+                        .filter(
+                          (line) =>
+                            !competencies.some(
+                              (competency) => competency.competencyId === line.competencyId,
+                            ),
+                        )
+                        .map((line) => ({
+                          competencyId: line.competencyId,
+                          name: line.competencyName,
+                          description: null,
+                        })),
+                    ]}
                     evaluatorRole={evaluatorRole}
+                    initialRatings={Object.fromEntries(
+                      (detail?.competencies ?? [])
+                        .filter((line) => line.score !== null)
+                        .map((line) => [line.competencyId, line.score as number]),
+                    )}
                     onSave={handleSaveCompetencies}
+                    onAddCustom={handleAddCustomCompetency}
                   />
                 </TabsContent>
               )}

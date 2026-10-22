@@ -13,6 +13,7 @@ import type {
   TeamMember,
   Competency,
   SubmitCompetencyEvaluationInput,
+  CreateCustomCompetencyEvaluationInput,
   UpdateCompetencyEvaluationInput,
   CompetencyEvaluation,
   AchievementType,
@@ -296,6 +297,16 @@ class ApiClient {
     // NOTE: the backend has no batch endpoint — one competency is submitted per call.
     // Submitting again for the same competencyId updates the existing score.
     return this.post<CompetencyEvaluation>("/api/competency-evaluations", payload, {
+      params: { hodEvaluationId },
+    });
+  }
+  createCustomCompetencyEvaluation(
+    hodEvaluationId: number,
+    payload: CreateCustomCompetencyEvaluationInput,
+  ) {
+    // POST /api/competency-evaluations/custom?hodEvaluationId=
+    // Creates the competency and its HOD score together.
+    return this.post<CompetencyEvaluation>("/api/competency-evaluations/custom", payload, {
       params: { hodEvaluationId },
     });
   }

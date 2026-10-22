@@ -292,6 +292,15 @@ export interface SubmitCompetencyEvaluationInput {
   remarks?: string;
 }
 
+// POST /api/competency-evaluations/custom?hodEvaluationId={id}
+// Creates a custom competency and records its score in a single request.
+export interface CreateCustomCompetencyEvaluationInput {
+  name: string;
+  description: string;
+  score: number;
+  remarks?: string;
+}
+
 // Matches UpdateCompetencyEvaluationDto — PUT /api/competency-evaluations/{id}
 export interface UpdateCompetencyEvaluationInput {
   score: number;
