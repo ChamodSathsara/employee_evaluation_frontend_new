@@ -7,6 +7,7 @@ import {
   Users,
   FilePlus2,
   Building2,
+  BriefcaseBusiness,
   CalendarRange,
 } from "lucide-react";
 
@@ -20,6 +21,8 @@ export const NAV_BY_ROLE: Record<number, NavItem[]> = {
   [ROLE.ADMIN]: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Users", href: "/users", icon: Users },
+    { label: "Departments", href: "/admin/departments", icon: Building2 },
+    { label: "Designations", href: "/admin/designations", icon: BriefcaseBusiness },
     { label: "Periods", href: "/evaluation-periods", icon: CalendarRange },
     { label: "Settings", href: "/settings", icon: Settings },
   ],

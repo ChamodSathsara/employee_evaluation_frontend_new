@@ -91,6 +91,13 @@ export default function UsersPage() {
   const [form, setForm] = useState<UserFormState>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingStatusId, setPendingStatusId] = useState<number | null>(null);
+  const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false);
+  const [designationDialogOpen, setDesignationDialogOpen] = useState(false);
+  const [newDepartmentName, setNewDepartmentName] = useState("");
+  const [newDepartmentDescription, setNewDepartmentDescription] = useState("");
+  const [newDesignationName, setNewDesignationName] = useState("");
+  const [isCreatingDepartment, setIsCreatingDepartment] = useState(false);
+  const [isCreatingDesignation, setIsCreatingDesignation] = useState(false);
 
   function loadUsers() {
     apiClient
@@ -106,17 +113,25 @@ export default function UsersPage() {
       .catch(() => {});
   }
 
+  function loadDepartments() {
+    return apiClient.getDepartments().then((res) => {
+      setDepartments(res.data);
+      return res.data;
+    });
+  }
+
+  function loadDesignations() {
+    return apiClient.getDesignations().then((res) => {
+      setDesignations(res.data);
+      return res.data;
+    });
+  }
+
   useEffect(() => {
     loadUsers();
     loadManagers();
-    apiClient
-      .getDepartments()
-      .then((res) => setDepartments(res.data))
-      .catch(() => {});
-    apiClient
-      .getDesignations()
-      .then((res) => setDesignations(res.data))
-      .catch(() => {});
+    loadDepartments().catch(() => {});
+    loadDesignations().catch(() => {});
     apiClient
       .getRoles()
       .then((res) => setRoles(res.data))
@@ -209,6 +224,56 @@ export default function UsersPage() {
       toast.error("Could not update status.");
     } finally {
       setPendingStatusId(null);
+    }
+  }
+
+  async function handleCreateDepartment() {
+    const departmentName = newDepartmentName.trim();
+    if (!departmentName) {
+      toast.error("Department name is required.");
+      return;
+    }
+
+    setIsCreatingDepartment(true);
+    try {
+      const response = await apiClient.createDepartment({
+        departmentName,
+        description: newDepartmentDescription.trim(),
+      });
+      const created = response.data;
+      setDepartments((current) => [...current, created]);
+      setForm((current) => ({ ...current, departmentId: created.departmentId }));
+      setDepartmentDialogOpen(false);
+      setNewDepartmentName("");
+      setNewDepartmentDescription("");
+      toast.success("Department created and selected.");
+    } catch {
+      toast.error("Could not create department.");
+    } finally {
+      setIsCreatingDepartment(false);
+    }
+  }
+
+  async function handleCreateDesignation() {
+    const designationName = newDesignationName.trim();
+    if (!designationName) {
+      toast.error("Designation name is required.");
+      return;
+    }
+
+    setIsCreatingDesignation(true);
+    try {
+      const response = await apiClient.createDesignation({ designationName });
+      const created = response.data;
+      setDesignations((current) => [...current, created]);
+      setForm((current) => ({ ...current, designationId: created.designationId }));
+      setDesignationDialogOpen(false);
+      setNewDesignationName("");
+      toast.success("Designation created and selected.");
+    } catch {
+      toast.error("Could not create designation.");
+    } finally {
+      setIsCreatingDesignation(false);
     }
   }
 
@@ -404,7 +469,18 @@ export default function UsersPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Department</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>Department</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto px-2 py-1 text-xs"
+                  onClick={() => setDepartmentDialogOpen(true)}
+                >
+                  <PlusCircle className="h-3.5 w-3.5" /> Create
+                </Button>
+              </div>
               <Select
                 value={form.departmentId ? String(form.departmentId) : NONE}
                 onValueChange={(v) =>
@@ -431,7 +507,18 @@ export default function UsersPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Designation</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>Designation</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto px-2 py-1 text-xs"
+                  onClick={() => setDesignationDialogOpen(true)}
+                >
+                  <PlusCircle className="h-3.5 w-3.5" /> Create
+                </Button>
+              </div>
               <Select
                 value={form.designationId ? String(form.designationId) : NONE}
                 onValueChange={(v) =>
@@ -478,6 +565,67 @@ export default function UsersPage() {
             <Button onClick={handleSave} disabled={isSaving}>
               {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
               {editingUser ? "Save changes" : "Create user"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={departmentDialogOpen} onOpenChange={setDepartmentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create department</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-department-name">Department name</Label>
+              <Input
+                id="quick-department-name"
+                value={newDepartmentName}
+                onChange={(event) => setNewDepartmentName(event.target.value)}
+                placeholder="Information Technology"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-department-description">Description</Label>
+              <Input
+                id="quick-department-description"
+                value={newDepartmentDescription}
+                onChange={(event) => setNewDepartmentDescription(event.target.value)}
+                placeholder="Handles company technology operations"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDepartmentDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateDepartment} disabled={isCreatingDepartment}>
+              {isCreatingDepartment && <Loader2 className="h-4 w-4 animate-spin" />}
+              Create department
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={designationDialogOpen} onOpenChange={setDesignationDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create designation</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="quick-designation-name">Designation name</Label>
+            <Input
+              id="quick-designation-name"
+              value={newDesignationName}
+              onChange={(event) => setNewDesignationName(event.target.value)}
+              placeholder="Software Engineer"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDesignationDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateDesignation} disabled={isCreatingDesignation}>
+              {isCreatingDesignation && <Loader2 className="h-4 w-4 animate-spin" />}
+              Create designation
             </Button>
           </DialogFooter>
         </DialogContent>
