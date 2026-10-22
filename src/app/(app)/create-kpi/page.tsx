@@ -64,6 +64,7 @@ function CreateKpiInner() {
 
   const [recentKpis, setRecentKpis] = useState<KpiAssignment[]>([]);
   const [isLoadingRecent, setIsLoadingRecent] = useState(true);
+  const [deletingRecentId, setDeletingRecentId] = useState<number | null>(null);
 
   // ---- details / edit dialog state ----
   const [selectedKpi, setSelectedKpi] = useState<KpiAssignment | null>(null);
@@ -96,7 +97,11 @@ function CreateKpiInner() {
   }
 
   useEffect(() => {
-    loadRecentKpis();
+    apiClient
+      .getMyTeamKpis()
+      .then((res) => setRecentKpis(res.data))
+      .catch(() => setRecentKpis([]))
+      .finally(() => setIsLoadingRecent(false));
   }, []);
 
   const totalWeight = rows.reduce(
@@ -257,11 +262,35 @@ function CreateKpiInner() {
       setSelectedKpi(null);
       loadRecentKpis();
     } catch {
-      toast.error(
-        "Could not delete KPI assignment. Only Draft assignments can be deleted.",
-      );
+      toast.error("Could not delete KPI assignment.");
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  async function handleDeleteRecent(kpi: KpiAssignment) {
+    if (
+      !confirm(
+        `Delete the KPI assignment for ${kpi.employeeName}? This cannot be undone.`,
+      )
+    )
+      return;
+
+    setDeletingRecentId(kpi.assignmentId);
+    try {
+      await apiClient.deleteKpi(kpi.assignmentId);
+      setRecentKpis((current) =>
+        current.filter((item) => item.assignmentId !== kpi.assignmentId),
+      );
+      if (selectedKpi?.assignmentId === kpi.assignmentId) {
+        setDetailsOpen(false);
+        setSelectedKpi(null);
+      }
+      toast.success("KPI assignment deleted.");
+    } catch {
+      toast.error("Could not delete KPI assignment.");
+    } finally {
+      setDeletingRecentId(null);
     }
   }
 
@@ -413,19 +442,47 @@ function CreateKpiInner() {
             )}
             {!isLoadingRecent &&
               recentKpis.map((a) => (
-                <button
+                <div
                   key={a.assignmentId}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => openDetails(a)}
-                  className="w-full rounded-md border border-border p-3 text-left transition-colors hover:bg-muted"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openDetails(a);
+                    }
+                  }}
+                  className="w-full cursor-pointer rounded-md border border-border p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <p className="font-medium">{a.employeeName}</p>
-                    <StatusBadge status={a.status} />
+                    <div className="flex shrink-0 items-center gap-2">
+                      <StatusBadge status={a.status} />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={deletingRecentId === a.assignmentId}
+                        aria-label={`Delete KPI assignment for ${a.employeeName}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteRecent(a);
+                        }}
+                      >
+                        {deletingRecentId === a.assignmentId ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {a.periodName} · {a.details.length} KPIs · {a.totalWeight}%
                   </p>
-                </button>
+                </div>
               ))}
           </CardContent>
         </Card>
@@ -550,9 +607,9 @@ function CreateKpiInner() {
                       <Pencil className="h-4 w-4" /> Edit
                     </Button>
                   )}
-                  {isDraft && (
+                  {!editMode && (
                     <Button
-                      variant="outline"
+                      variant="destructive"
                       onClick={handleDeleteKpi}
                       disabled={isDeleting}
                     >
