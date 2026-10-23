@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { BriefcaseBusiness, Loader2, Pencil, PlusCircle, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
+import { BulkImportDialog } from "@/components/admin/bulk-import-dialog";
 
 export function DesignationManagement() {
   const [designations, setDesignations] = useState<Designation[] | null>(null);
@@ -94,9 +95,12 @@ export function DesignationManagement() {
         title="Designations"
         description="Create and manage the job titles available when assigning users."
         action={
-          <Button onClick={openCreate}>
-            <PlusCircle className="h-4 w-4" /> Add designation
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <BulkImportDialog onImported={loadDesignations} />
+            <Button onClick={openCreate}>
+              <PlusCircle className="h-4 w-4" /> Add designation
+            </Button>
+          </div>
         }
       />
 

@@ -563,6 +563,16 @@ class ApiClient {
     return this.get<AdminDashboard>("/api/dashboard/admin");
   }
 
+  // ===================== BULK IMPORT (BulkImportController) — Admin only =====================
+  bulkImportExcel(file: File) {
+    // POST /api/bulk-import/excel — multipart/form-data field: file
+    const form = new FormData();
+    form.append("file", file);
+    return this.post<unknown>("/api/bulk-import/excel", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  }
+
   // ===================== REPORTS (ReportsController) =====================
   getEmployeeReport(employeeId: number, periodId?: number) {
     // GET /api/reports/employee/{employeeId}?periodId=

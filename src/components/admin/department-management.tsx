@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Building2, Loader2, Pencil, PlusCircle, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
+import { BulkImportDialog } from "@/components/admin/bulk-import-dialog";
 
 const emptyForm = { departmentName: "", description: "" };
 
@@ -102,9 +103,12 @@ export function DepartmentManagement() {
         title="Departments"
         description="Create and manage the departments available when assigning users."
         action={
-          <Button onClick={openCreate}>
-            <PlusCircle className="h-4 w-4" /> Add department
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <BulkImportDialog onImported={loadDepartments} />
+            <Button onClick={openCreate}>
+              <PlusCircle className="h-4 w-4" /> Add department
+            </Button>
+          </div>
         }
       />
 

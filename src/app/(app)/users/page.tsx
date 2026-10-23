@@ -38,6 +38,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { BulkImportDialog } from "@/components/admin/bulk-import-dialog";
 import {
   Loader2,
   PlusCircle,
@@ -287,9 +288,19 @@ export default function UsersPage() {
         title="Users"
         description="Create and manage employee accounts, roles, and departments."
         action={
-          <Button onClick={openCreate}>
-            <PlusCircle className="h-4 w-4" /> Add user
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <BulkImportDialog
+              onImported={() => {
+                loadUsers();
+                loadManagers();
+                loadDepartments().catch(() => {});
+                loadDesignations().catch(() => {});
+              }}
+            />
+            <Button onClick={openCreate}>
+              <PlusCircle className="h-4 w-4" /> Add user
+            </Button>
+          </div>
         }
       />
 
