@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -45,6 +46,7 @@ import {
   Pencil,
   Upload,
   RotateCcw,
+  Users,
 } from "lucide-react";
 
 function CreateKpiInner() {
@@ -56,6 +58,8 @@ function CreateKpiInner() {
   const [employeeId, setEmployeeId] = useState<string>(
     preselectedEmployeeId ?? "",
   );
+  const [creationMode, setCreationMode] = useState<"single" | "bulk">("single");
+  const [bulkEmployeeIds, setBulkEmployeeIds] = useState<number[]>([]);
   const [periodId, setPeriodId] = useState<string>("");
   const [rows, setRows] = useState<CreateKpiDetailInput[]>([
     { kpiName: "", description: "", weightPercentage: 0 },
@@ -128,8 +132,16 @@ function CreateKpiInner() {
   }
 
   async function handleSubmit() {
-    if (!employeeId || !periodId) {
-      toast.error("Select an employee and an evaluation period.");
+    if (!periodId) {
+      toast.error("Select an evaluation period.");
+      return;
+    }
+    if (creationMode === "single" && !employeeId) {
+      toast.error("Select an employee.");
+      return;
+    }
+    if (creationMode === "bulk" && bulkEmployeeIds.length === 0) {
+      toast.error("Select at least one employee.");
       return;
     }
     if (rows.some((r) => !r.kpiName || !r.weightPercentage)) {
@@ -142,16 +154,32 @@ function CreateKpiInner() {
     }
     setIsSubmitting(true);
     try {
-      await apiClient.createKpi({
-        employeeId: Number(employeeId),
-        periodId: Number(periodId),
-        details: rows,
-      });
-      toast.success("KPI assignment created as Draft.");
+      if (creationMode === "bulk") {
+        await apiClient.createBulkKpis({
+          employeeIds: bulkEmployeeIds,
+          periodId: Number(periodId),
+          details: rows,
+        });
+        toast.success(
+          `${bulkEmployeeIds.length} KPI assignments created as Draft.`,
+        );
+        setBulkEmployeeIds([]);
+      } else {
+        await apiClient.createKpi({
+          employeeId: Number(employeeId),
+          periodId: Number(periodId),
+          details: rows,
+        });
+        toast.success("KPI assignment created as Draft.");
+      }
       setRows([{ kpiName: "", description: "", weightPercentage: 0 }]);
       loadRecentKpis();
     } catch {
-      toast.error("Could not create KPI assignment.");
+      toast.error(
+        creationMode === "bulk"
+          ? "Could not create the bulk KPI assignments."
+          : "Could not create KPI assignment.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -288,43 +316,122 @@ function CreateKpiInner() {
       <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>New KPI assignment</CardTitle>
+            <CardTitle>
+              {creationMode === "bulk" ? "Bulk KPI assignments" : "New KPI assignment"}
+            </CardTitle>
             <CardDescription>
-              Weights across all KPIs must add up to 100%.
+              {creationMode === "bulk"
+                ? "Assign the same KPI details to multiple employees as separate Draft assignments."
+                : "Weights across all KPIs must add up to 100%."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
+            <Tabs
+              value={creationMode}
+              onValueChange={(value) =>
+                setCreationMode(value as "single" | "bulk")
+              }
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="single">Single employee</TabsTrigger>
+                <TabsTrigger value="bulk">
+                  <Users className="mr-1.5 h-4 w-4" /> Bulk creation
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="single" className="mt-4 space-y-1.5">
                 <Label>Employee</Label>
                 <Select value={employeeId} onValueChange={setEmployeeId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select employee" />
                   </SelectTrigger>
                   <SelectContent>
-                    {team.map((m, key) => (
-                      <SelectItem key={key} value={String(m.userId)}>
-                        {m.firstName} {m.lastName}
+                    {team.map((member) => (
+                      <SelectItem key={member.userId} value={String(member.userId)}>
+                        {member.firstName} {member.lastName}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Evaluation period</Label>
-                <Select value={periodId} onValueChange={setPeriodId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select period" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {periods.map((p, index) => (
-                      <SelectItem key={index} value={String(p.periodId)}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              </TabsContent>
+
+              <TabsContent value="bulk" className="mt-4 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label>Employees</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setBulkEmployeeIds(
+                        bulkEmployeeIds.length === team.length
+                          ? []
+                          : team.map((member) => member.userId),
+                      )
+                    }
+                  >
+                    {bulkEmployeeIds.length === team.length && team.length > 0
+                      ? "Clear all"
+                      : "Select all"}
+                  </Button>
+                </div>
+                <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border border-border p-2">
+                  {team.length === 0 && (
+                    <p className="px-2 py-5 text-center text-sm text-muted-foreground">
+                      No employees available.
+                    </p>
+                  )}
+                  {team.map((member) => {
+                    const checked = bulkEmployeeIds.includes(member.userId);
+                    return (
+                      <label
+                        key={member.userId}
+                        className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setBulkEmployeeIds((current) =>
+                              checked
+                                ? current.filter((id) => id !== member.userId)
+                                : [...current, member.userId],
+                            )
+                          }
+                          className="h-4 w-4 rounded border-input accent-primary"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium">
+                            {member.firstName} {member.lastName}
+                          </span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {member.employeeNo} · {member.designationName ?? member.roleName}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {bulkEmployeeIds.length} employee{bulkEmployeeIds.length === 1 ? "" : "s"} selected
+                </p>
+              </TabsContent>
+            </Tabs>
+
+            <div className="space-y-1.5">
+              <Label>Evaluation period</Label>
+              <Select value={periodId} onValueChange={setPeriodId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  {periods.map((period) => (
+                    <SelectItem key={period.periodId} value={String(period.periodId)}>
+                      {period.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-4">
@@ -399,7 +506,9 @@ function CreateKpiInner() {
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              Create KPI assignment
+              {creationMode === "bulk"
+                ? `Create ${bulkEmployeeIds.length || "bulk"} assignments`
+                : "Create KPI assignment"}
             </Button>
           </CardContent>
         </Card>

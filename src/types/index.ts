@@ -100,6 +100,13 @@ export interface CreateKpiRequest {
   details: CreateKpiDetailInput[];
 }
 
+// Matches the bulk KPI assignment request — POST /api/kpis/bulk
+export interface CreateBulkKpiRequest {
+  employeeIds: number[];
+  periodId: number;
+  details: CreateKpiDetailInput[];
+}
+
 // Matches UpdateKpiAssignmentDto
 export interface UpdateKpiRequest {
   details: CreateKpiDetailInput[];

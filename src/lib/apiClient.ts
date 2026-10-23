@@ -6,6 +6,7 @@ import type {
   ChangePasswordInput,
   KpiAssignment,
   CreateKpiRequest,
+  CreateBulkKpiRequest,
   UpdateKpiRequest,
   EvaluationPeriod,
   CreateEvaluationPeriodInput,
@@ -173,6 +174,10 @@ class ApiClient {
   createKpi(payload: CreateKpiRequest) {
     // POST /api/kpis — CreateKpiAssignmentDto { employeeId, periodId, details[] }
     return this.post<KpiAssignment>("/api/kpis", payload);
+  }
+  createBulkKpis(payload: CreateBulkKpiRequest) {
+    // POST /api/kpis/bulk — creates one Draft assignment per selected employee
+    return this.post<KpiAssignment[]>("/api/kpis/bulk", payload);
   }
   updateKpi(assignmentId: number, payload: UpdateKpiRequest) {
     // PUT /api/kpis/{assignmentId} — UpdateKpiAssignmentDto { details[] }
