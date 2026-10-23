@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FileSpreadsheet, Loader2, Upload } from "lucide-react";
+import { Download, FileSpreadsheet, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 export function BulkImportDialog({
@@ -82,7 +82,14 @@ export function BulkImportDialog({
 
           <div className="space-y-4">
             <div className="rounded-lg border border-border bg-muted/40 p-4">
-              <p className="text-sm font-medium">Required workbook sheets</p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-medium">Required workbook sheets</p>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/employee-bulk-import-template.xlsx" download>
+                    <Download className="h-4 w-4" /> Download template
+                  </a>
+                </Button>
+              </div>
               <div className="mt-3 space-y-3 text-xs text-muted-foreground">
                 <div>
                   <p className="font-medium text-foreground">Departments</p>
