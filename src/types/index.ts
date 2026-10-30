@@ -595,6 +595,10 @@ export interface CreateCompanyInput {
   companyName: string;
 }
 
+export interface UpdateCompanyInput {
+  companyName: string;
+}
+
 // ===== Admin / Users (backend: UserDtos.cs) =====
 // Matches UserDto
 export interface AdminUser {

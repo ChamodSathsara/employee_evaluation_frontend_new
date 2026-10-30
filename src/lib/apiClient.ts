@@ -34,6 +34,7 @@ import type {
   Role,
   Company,
   CreateCompanyInput,
+  UpdateCompanyInput,
   AdminUser,
   CreateUserInput,
   UpdateUserInput,
@@ -526,6 +527,9 @@ class ApiClient {
   }
   createCompany(payload: CreateCompanyInput) {
     return this.post<Company>("/api/companies", payload);
+  }
+  updateCompany(id: number, payload: UpdateCompanyInput) {
+    return this.put<Company>(`/api/companies/${id}`, payload);
   }
 
   // ===================== USERS (UsersController) — Admin only =====================

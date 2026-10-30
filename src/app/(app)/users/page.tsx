@@ -99,13 +99,14 @@ export default function UsersPage() {
   const [pendingStatusId, setPendingStatusId] = useState<number | null>(null);
   const [companyFilter, setCompanyFilter] = useState(ALL);
   const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false);
   const [designationDialogOpen, setDesignationDialogOpen] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newDepartmentName, setNewDepartmentName] = useState("");
   const [newDepartmentDescription, setNewDepartmentDescription] = useState("");
   const [newDesignationName, setNewDesignationName] = useState("");
-  const [isCreatingCompany, setIsCreatingCompany] = useState(false);
+  const [isSavingCompany, setIsSavingCompany] = useState(false);
   const [isCreatingDepartment, setIsCreatingDepartment] = useState(false);
   const [isCreatingDesignation, setIsCreatingDesignation] = useState(false);
 
@@ -284,26 +285,68 @@ export default function UsersPage() {
     }
   }
 
-  async function handleCreateCompany() {
+  function openCreateCompany() {
+    setEditingCompany(null);
+    setNewCompanyName("");
+    setCompanyDialogOpen(true);
+  }
+
+  function openEditCompany(company: Company) {
+    setEditingCompany(company);
+    setNewCompanyName(company.companyName);
+    setCompanyDialogOpen(true);
+  }
+
+  function handleCompanyDialogChange(open: boolean) {
+    if (isSavingCompany) return;
+    setCompanyDialogOpen(open);
+    if (!open) {
+      setEditingCompany(null);
+      setNewCompanyName("");
+    }
+  }
+
+  async function handleSaveCompany() {
     const companyName = newCompanyName.trim();
     if (!companyName) {
       toast.error("Company name is required.");
       return;
     }
 
-    setIsCreatingCompany(true);
+    setIsSavingCompany(true);
     try {
-      const response = await apiClient.createCompany({ companyName });
-      const created = response.data;
-      setCompanies((current) => [...current, created]);
-      setForm((current) => ({ ...current, companyId: created.companyId }));
+      if (editingCompany) {
+        const response = await apiClient.updateCompany(editingCompany.companyId, {
+          companyName,
+        });
+        const updated = response.data;
+        setCompanies((current) =>
+          current.map((company) =>
+            company.companyId === updated.companyId ? updated : company,
+          ),
+        );
+        setUsers((current) =>
+          current?.map((user) =>
+            user.companyId === updated.companyId
+              ? { ...user, companyName: updated.companyName }
+              : user,
+          ) ?? null,
+        );
+        toast.success("Company updated.");
+      } else {
+        const response = await apiClient.createCompany({ companyName });
+        const created = response.data;
+        setCompanies((current) => [...current, created]);
+        setForm((current) => ({ ...current, companyId: created.companyId }));
+        toast.success("Company created and selected.");
+      }
       setCompanyDialogOpen(false);
+      setEditingCompany(null);
       setNewCompanyName("");
-      toast.success("Company created and selected.");
     } catch {
-      toast.error("Could not create company.");
+      toast.error(editingCompany ? "Could not update company." : "Could not create company.");
     } finally {
-      setIsCreatingCompany(false);
+      setIsSavingCompany(false);
     }
   }
 
@@ -335,6 +378,12 @@ export default function UsersPage() {
       (!editingUser || manager.userId !== editingUser.userId) &&
       (!form.companyId || manager.companyId === form.companyId),
   );
+  const filteredCompany = companies.find(
+    (company) => String(company.companyId) === companyFilter,
+  );
+  const formCompany = companies.find(
+    (company) => company.companyId === form.companyId,
+  );
 
   return (
     <div>
@@ -352,7 +401,7 @@ export default function UsersPage() {
                 loadDesignations().catch(() => {});
               }}
             />
-            <Button variant="outline" onClick={() => setCompanyDialogOpen(true)}>
+            <Button variant="outline" onClick={openCreateCompany}>
               <Building2 className="h-4 w-4" /> Add company
             </Button>
             <Button onClick={openCreate}>
@@ -362,27 +411,34 @@ export default function UsersPage() {
         }
       />
 
-      <div className="mb-6 flex max-w-sm flex-col gap-1.5">
+      <div className="mb-6 flex max-w-md flex-col gap-1.5">
         <Label htmlFor="company-filter">Filter by company</Label>
-        <Select
-          value={companyFilter}
-          onValueChange={(value) => {
-            setCompanyFilter(value);
-            loadUsers(value);
-          }}
-        >
-          <SelectTrigger id="company-filter">
-            <SelectValue placeholder="All companies" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All companies</SelectItem>
-            {companies.map((company) => (
-              <SelectItem key={company.companyId} value={String(company.companyId)}>
-                {company.companyName}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <Select
+            value={companyFilter}
+            onValueChange={(value) => {
+              setCompanyFilter(value);
+              loadUsers(value);
+            }}
+          >
+            <SelectTrigger id="company-filter" className="flex-1">
+              <SelectValue placeholder="All companies" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All companies</SelectItem>
+              {companies.map((company) => (
+                <SelectItem key={company.companyId} value={String(company.companyId)}>
+                  {company.companyName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {filteredCompany && (
+            <Button variant="outline" onClick={() => openEditCompany(filteredCompany)}>
+              <Pencil className="h-4 w-4" /> Edit
+            </Button>
+          )}
+        </div>
       </div>
 
       {!users && (
@@ -543,15 +599,28 @@ export default function UsersPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <Label>Company</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto px-2 py-1 text-xs"
-                  onClick={() => setCompanyDialogOpen(true)}
-                >
-                  <PlusCircle className="h-3.5 w-3.5" /> Create
-                </Button>
+                <div className="flex items-center gap-1">
+                  {formCompany && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-2 py-1 text-xs"
+                      onClick={() => openEditCompany(formCompany)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto px-2 py-1 text-xs"
+                    onClick={openCreateCompany}
+                  >
+                    <PlusCircle className="h-3.5 w-3.5" /> Create
+                  </Button>
+                </div>
               </div>
               <Select
                 value={form.companyId ? String(form.companyId) : undefined}
@@ -701,10 +770,10 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={companyDialogOpen} onOpenChange={setCompanyDialogOpen}>
+      <Dialog open={companyDialogOpen} onOpenChange={handleCompanyDialogChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create company</DialogTitle>
+            <DialogTitle>{editingCompany ? "Edit company" : "Create company"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-1.5">
             <Label htmlFor="quick-company-name">Company name</Label>
@@ -717,12 +786,12 @@ export default function UsersPage() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCompanyDialogOpen(false)}>
+            <Button variant="outline" onClick={() => handleCompanyDialogChange(false)} disabled={isSavingCompany}>
               Cancel
             </Button>
-            <Button onClick={handleCreateCompany} disabled={isCreatingCompany}>
-              {isCreatingCompany && <Loader2 className="h-4 w-4 animate-spin" />}
-              Create company
+            <Button onClick={handleSaveCompany} disabled={isSavingCompany}>
+              {isSavingCompany && <Loader2 className="h-4 w-4 animate-spin" />}
+              {editingCompany ? "Save changes" : "Create company"}
             </Button>
           </DialogFooter>
         </DialogContent>
