@@ -32,6 +32,8 @@ import type {
   CreateDesignationInput,
   UpdateDesignationInput,
   Role,
+  Company,
+  CreateCompanyInput,
   AdminUser,
   CreateUserInput,
   UpdateUserInput,
@@ -515,9 +517,20 @@ class ApiClient {
     return this.get<Role[]>("/api/roles");
   }
 
+  // ===================== COMPANIES (CompaniesController) — Admin only =====================
+  getCompanies() {
+    return this.get<Company[]>("/api/companies");
+  }
+  getCompany(id: number) {
+    return this.get<Company>(`/api/companies/${id}`);
+  }
+  createCompany(payload: CreateCompanyInput) {
+    return this.post<Company>("/api/companies", payload);
+  }
+
   // ===================== USERS (UsersController) — Admin only =====================
   getUsers(params: UserSearchParams) {
-    // GET /api/users?keyword=&roleId=&departmentId=&isActive=&pageNumber=&pageSize=
+    // GET /api/users?keyword=&roleId=&companyId=&departmentId=&isActive=&pageNumber=&pageSize=
     return this.get<PagedResult<AdminUser>>("/api/users", { params });
   }
   getUser(id: number) {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import apiClient from "@/lib/apiClient";
 import type {
   AdminUser,
+  Company,
   Department,
   Designation,
   Role,
@@ -52,6 +53,7 @@ import {
 } from "lucide-react";
 
 const NONE = "none";
+const ALL = "all";
 
 type UserFormState = {
   employeeNo: string;
@@ -60,6 +62,7 @@ type UserFormState = {
   email: string;
   password: string;
   roleId: number;
+  companyId: number | null;
   departmentId: number | null;
   designationId: number | null;
   reportsTo: number | null;
@@ -72,6 +75,7 @@ const emptyForm: UserFormState = {
   email: "",
   password: "",
   roleId: 6,
+  companyId: null,
   departmentId: null,
   designationId: null,
   reportsTo: null,
@@ -84,6 +88,7 @@ function initials(firstName: string, lastName: string) {
 export default function UsersPage() {
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [managers, setManagers] = useState<AdminUser[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -92,17 +97,25 @@ export default function UsersPage() {
   const [form, setForm] = useState<UserFormState>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingStatusId, setPendingStatusId] = useState<number | null>(null);
+  const [companyFilter, setCompanyFilter] = useState(ALL);
+  const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
   const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false);
   const [designationDialogOpen, setDesignationDialogOpen] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState("");
   const [newDepartmentName, setNewDepartmentName] = useState("");
   const [newDepartmentDescription, setNewDepartmentDescription] = useState("");
   const [newDesignationName, setNewDesignationName] = useState("");
+  const [isCreatingCompany, setIsCreatingCompany] = useState(false);
   const [isCreatingDepartment, setIsCreatingDepartment] = useState(false);
   const [isCreatingDesignation, setIsCreatingDesignation] = useState(false);
 
-  function loadUsers() {
+  function loadUsers(companyId: string) {
     apiClient
-      .getUsers({ pageSize: 100 })
+      .getUsers({
+        companyId: companyId === ALL ? undefined : Number(companyId),
+        pageNumber: 1,
+        pageSize: 100,
+      })
       .then((res) => setUsers(res.data.items))
       .catch(() => setUsers([]));
   }
@@ -121,6 +134,13 @@ export default function UsersPage() {
     });
   }
 
+  function loadCompanies() {
+    return apiClient.getCompanies().then((res) => {
+      setCompanies(res.data);
+      return res.data;
+    });
+  }
+
   function loadDesignations() {
     return apiClient.getDesignations().then((res) => {
       setDesignations(res.data);
@@ -129,8 +149,9 @@ export default function UsersPage() {
   }
 
   useEffect(() => {
-    loadUsers();
+    loadUsers(ALL);
     loadManagers();
+    loadCompanies().catch(() => {});
     loadDepartments().catch(() => {});
     loadDesignations().catch(() => {});
     apiClient
@@ -154,6 +175,7 @@ export default function UsersPage() {
       email: u.email,
       password: "",
       roleId: u.roleId,
+      companyId: u.companyId,
       departmentId: u.departmentId,
       designationId: u.designationId,
       reportsTo: u.reportsTo,
@@ -162,6 +184,11 @@ export default function UsersPage() {
   }
 
   async function handleSave() {
+    if (!form.companyId) {
+      toast.error("Company is required.");
+      return;
+    }
+
     setIsSaving(true);
     try {
       if (editingUser) {
@@ -170,6 +197,7 @@ export default function UsersPage() {
           lastName: form.lastName,
           email: form.email,
           roleId: form.roleId,
+          companyId: form.companyId,
           departmentId: form.departmentId,
           designationId: form.designationId,
           reportsTo: form.reportsTo,
@@ -184,6 +212,7 @@ export default function UsersPage() {
           email: form.email,
           password: form.password,
           roleId: form.roleId,
+          companyId: form.companyId,
           departmentId: form.departmentId,
           designationId: form.designationId,
           reportsTo: form.reportsTo,
@@ -192,7 +221,7 @@ export default function UsersPage() {
         toast.success("User created.");
       }
       setDialogOpen(false);
-      loadUsers();
+      loadUsers(companyFilter);
       loadManagers();
     } catch {
       toast.error("Could not save user.");
@@ -206,7 +235,7 @@ export default function UsersPage() {
     try {
       await apiClient.deleteUser(userId);
       toast.success("User deleted.");
-      loadUsers();
+      loadUsers(companyFilter);
       loadManagers();
     } catch {
       toast.error("Could not delete user.");
@@ -220,7 +249,7 @@ export default function UsersPage() {
     try {
       await apiClient.updateUserStatus(u.userId, !u.isActive);
       toast.success(u.isActive ? "User deactivated." : "User activated.");
-      loadUsers();
+      loadUsers(companyFilter);
     } catch {
       toast.error("Could not update status.");
     } finally {
@@ -255,6 +284,29 @@ export default function UsersPage() {
     }
   }
 
+  async function handleCreateCompany() {
+    const companyName = newCompanyName.trim();
+    if (!companyName) {
+      toast.error("Company name is required.");
+      return;
+    }
+
+    setIsCreatingCompany(true);
+    try {
+      const response = await apiClient.createCompany({ companyName });
+      const created = response.data;
+      setCompanies((current) => [...current, created]);
+      setForm((current) => ({ ...current, companyId: created.companyId }));
+      setCompanyDialogOpen(false);
+      setNewCompanyName("");
+      toast.success("Company created and selected.");
+    } catch {
+      toast.error("Could not create company.");
+    } finally {
+      setIsCreatingCompany(false);
+    }
+  }
+
   async function handleCreateDesignation() {
     const designationName = newDesignationName.trim();
     if (!designationName) {
@@ -279,7 +331,9 @@ export default function UsersPage() {
   }
 
   const reportsToOptions = managers.filter(
-    (m) => !editingUser || m.userId !== editingUser.userId,
+    (manager) =>
+      (!editingUser || manager.userId !== editingUser.userId) &&
+      (!form.companyId || manager.companyId === form.companyId),
   );
 
   return (
@@ -291,18 +345,45 @@ export default function UsersPage() {
           <div className="flex flex-wrap gap-2">
             <BulkImportDialog
               onImported={() => {
-                loadUsers();
+                loadUsers(companyFilter);
                 loadManagers();
+                loadCompanies().catch(() => {});
                 loadDepartments().catch(() => {});
                 loadDesignations().catch(() => {});
               }}
             />
+            <Button variant="outline" onClick={() => setCompanyDialogOpen(true)}>
+              <Building2 className="h-4 w-4" /> Add company
+            </Button>
             <Button onClick={openCreate}>
               <PlusCircle className="h-4 w-4" /> Add user
             </Button>
           </div>
         }
       />
+
+      <div className="mb-6 flex max-w-sm flex-col gap-1.5">
+        <Label htmlFor="company-filter">Filter by company</Label>
+        <Select
+          value={companyFilter}
+          onValueChange={(value) => {
+            setCompanyFilter(value);
+            loadUsers(value);
+          }}
+        >
+          <SelectTrigger id="company-filter">
+            <SelectValue placeholder="All companies" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All companies</SelectItem>
+            {companies.map((company) => (
+              <SelectItem key={company.companyId} value={String(company.companyId)}>
+                {company.companyName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {!users && (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -362,6 +443,10 @@ export default function UsersPage() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Mail className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{u.email}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Building2 className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{u.companyName}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Building2 className="h-3.5 w-3.5 shrink-0" />
@@ -450,6 +535,41 @@ export default function UsersPage() {
                   {roles.map((r) => (
                     <SelectItem key={r.roleId} value={String(r.roleId)}>
                       {r.roleName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Company</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto px-2 py-1 text-xs"
+                  onClick={() => setCompanyDialogOpen(true)}
+                >
+                  <PlusCircle className="h-3.5 w-3.5" /> Create
+                </Button>
+              </div>
+              <Select
+                value={form.companyId ? String(form.companyId) : undefined}
+                onValueChange={(value) =>
+                  setForm((current) => ({
+                    ...current,
+                    companyId: Number(value),
+                    reportsTo: null,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select company" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.companyId} value={String(company.companyId)}>
+                      {company.companyName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -576,6 +696,33 @@ export default function UsersPage() {
             <Button onClick={handleSave} disabled={isSaving}>
               {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
               {editingUser ? "Save changes" : "Create user"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={companyDialogOpen} onOpenChange={setCompanyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create company</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="quick-company-name">Company name</Label>
+            <Input
+              id="quick-company-name"
+              value={newCompanyName}
+              onChange={(event) => setNewCompanyName(event.target.value)}
+              placeholder="Gestetner of Ceylon PLC"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompanyDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateCompany} disabled={isCreatingCompany}>
+              {isCreatingCompany && <Loader2 className="h-4 w-4 animate-spin" />}
+              Create company
             </Button>
           </DialogFooter>
         </DialogContent>

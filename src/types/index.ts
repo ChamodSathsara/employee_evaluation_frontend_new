@@ -584,6 +584,17 @@ export interface Role {
   userCount: number;
 }
 
+// ===== Companies (backend: CompanyDtos.cs) =====
+export interface Company {
+  companyId: number;
+  companyName: string;
+  userCount: number;
+}
+
+export interface CreateCompanyInput {
+  companyName: string;
+}
+
 // ===== Admin / Users (backend: UserDtos.cs) =====
 // Matches UserDto
 export interface AdminUser {
@@ -594,6 +605,8 @@ export interface AdminUser {
   email: string;
   roleId: number;
   roleName: string;
+  companyId: number;
+  companyName: string;
   departmentId: number | null;
   departmentName: string | null;
   designationId: number | null;
@@ -612,6 +625,7 @@ export interface CreateUserInput {
   email: string;
   password: string;
   roleId: number;
+  companyId: number;
   departmentId: number | null;
   designationId: number | null;
   reportsTo: number | null;
@@ -623,6 +637,7 @@ export interface UpdateUserInput {
   lastName: string;
   email: string;
   roleId: number;
+  companyId: number;
   departmentId: number | null;
   designationId: number | null;
   reportsTo: number | null;
@@ -632,6 +647,7 @@ export interface UpdateUserInput {
 export interface UserSearchParams {
   keyword?: string;
   roleId?: number;
+  companyId?: number;
   departmentId?: number;
   isActive?: boolean;
   pageNumber?: number;
