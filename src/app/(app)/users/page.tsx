@@ -103,6 +103,7 @@ export default function UsersPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [pendingStatusId, setPendingStatusId] = useState<number | null>(null);
   const [companyFilter, setCompanyFilter] = useState(ALL);
+  const [departmentFilter, setDepartmentFilter] = useState(ALL);
   const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false);
@@ -115,10 +116,11 @@ export default function UsersPage() {
   const [isCreatingDepartment, setIsCreatingDepartment] = useState(false);
   const [isCreatingDesignation, setIsCreatingDesignation] = useState(false);
 
-  function loadUsers(companyId: string) {
+  function loadUsers(companyId: string, departmentId: string) {
     apiClient
       .getUsers({
         companyId: companyId === ALL ? undefined : Number(companyId),
+        departmentId: departmentId === ALL ? undefined : Number(departmentId),
         pageNumber: 1,
         pageSize: 100,
       })
@@ -155,7 +157,7 @@ export default function UsersPage() {
   }
 
   useEffect(() => {
-    loadUsers(ALL);
+    loadUsers(ALL, ALL);
     loadManagers();
     loadCompanies().catch(() => {});
     loadDepartments().catch(() => {});
@@ -230,7 +232,7 @@ export default function UsersPage() {
         toast.success("User created.");
       }
       setDialogOpen(false);
-      loadUsers(companyFilter);
+      loadUsers(companyFilter, departmentFilter);
       loadManagers();
     } catch {
       toast.error("Could not save user.");
@@ -244,7 +246,7 @@ export default function UsersPage() {
     try {
       await apiClient.deleteUser(userId);
       toast.success("User deleted.");
-      loadUsers(companyFilter);
+      loadUsers(companyFilter, departmentFilter);
       loadManagers();
     } catch {
       toast.error("Could not delete user.");
@@ -258,7 +260,7 @@ export default function UsersPage() {
     try {
       await apiClient.updateUserStatus(u.userId, !u.isActive);
       toast.success(u.isActive ? "User deactivated." : "User activated.");
-      loadUsers(companyFilter);
+      loadUsers(companyFilter, departmentFilter);
     } catch {
       toast.error("Could not update status.");
     } finally {
@@ -412,7 +414,7 @@ export default function UsersPage() {
           <div className="flex flex-wrap gap-2">
             <BulkImportDialog
               onImported={() => {
-                loadUsers(companyFilter);
+                loadUsers(companyFilter, departmentFilter);
                 loadManagers();
                 loadCompanies().catch(() => {});
                 loadDepartments().catch(() => {});
@@ -429,33 +431,58 @@ export default function UsersPage() {
         }
       />
 
-      <div className="mb-6 flex max-w-md flex-col gap-1.5">
-        <Label htmlFor="company-filter">Filter by company</Label>
-        <div className="flex gap-2">
+      <div className="mb-6 grid max-w-3xl gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="company-filter">Filter by company</Label>
+          <div className="flex gap-2">
+            <Select
+              value={companyFilter}
+              onValueChange={(value) => {
+                setCompanyFilter(value);
+                loadUsers(value, departmentFilter);
+              }}
+            >
+              <SelectTrigger id="company-filter" className="flex-1">
+                <SelectValue placeholder="All companies" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All companies</SelectItem>
+                {companies.map((company) => (
+                  <SelectItem key={company.companyId} value={String(company.companyId)}>
+                    {company.companyName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {filteredCompany && (
+              <Button variant="outline" onClick={() => openEditCompany(filteredCompany)}>
+                <Pencil className="h-4 w-4" /> Edit
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="department-filter">Filter by department</Label>
           <Select
-            value={companyFilter}
+            value={departmentFilter}
             onValueChange={(value) => {
-              setCompanyFilter(value);
-              loadUsers(value);
+              setDepartmentFilter(value);
+              loadUsers(companyFilter, value);
             }}
           >
-            <SelectTrigger id="company-filter" className="flex-1">
-              <SelectValue placeholder="All companies" />
+            <SelectTrigger id="department-filter">
+              <SelectValue placeholder="All departments" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All companies</SelectItem>
-              {companies.map((company) => (
-                <SelectItem key={company.companyId} value={String(company.companyId)}>
-                  {company.companyName}
+              <SelectItem value={ALL}>All departments</SelectItem>
+              {departments.map((department) => (
+                <SelectItem key={department.departmentId} value={String(department.departmentId)}>
+                  {department.departmentName}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          {filteredCompany && (
-            <Button variant="outline" onClick={() => openEditCompany(filteredCompany)}>
-              <Pencil className="h-4 w-4" /> Edit
-            </Button>
-          )}
         </div>
       </div>
 
