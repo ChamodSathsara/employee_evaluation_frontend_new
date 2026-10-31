@@ -103,7 +103,8 @@ export function BulkImportDialog({
                   <p className="font-medium text-foreground">Users</p>
                   <p className="leading-relaxed">
                     EmployeeNo · FirstName · LastName · Email · Password · RoleName ·
-                    DepartmentName · DesignationName · ReportsToEmployeeNo · IsActive
+                    CompanyName · DepartmentName · DesignationName ·
+                    ReportedSupervisorEmployeeNo · ReportedHodEmployeeNo · IsActive
                   </p>
                 </div>
               </div>
