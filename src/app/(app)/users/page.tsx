@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import apiClient from "@/lib/apiClient";
+import { ROLE } from "@/types";
 import type {
   AdminUser,
   Company,
@@ -66,6 +67,8 @@ type UserFormState = {
   departmentId: number | null;
   designationId: number | null;
   reportsTo: number | null;
+  reportedSupervisorId: number | null;
+  reportedHodId: number | null;
 };
 
 const emptyForm: UserFormState = {
@@ -79,6 +82,8 @@ const emptyForm: UserFormState = {
   departmentId: null,
   designationId: null,
   reportsTo: null,
+  reportedSupervisorId: null,
+  reportedHodId: null,
 };
 
 function initials(firstName: string, lastName: string) {
@@ -180,6 +185,8 @@ export default function UsersPage() {
       departmentId: u.departmentId,
       designationId: u.designationId,
       reportsTo: u.reportsTo,
+      reportedSupervisorId: null,
+      reportedHodId: null,
     });
     setDialogOpen(true);
   }
@@ -216,7 +223,8 @@ export default function UsersPage() {
           companyId: form.companyId,
           departmentId: form.departmentId,
           designationId: form.designationId,
-          reportsTo: form.reportsTo,
+          reportedSupervisorId: form.reportedSupervisorId,
+          reportedHodId: form.reportedHodId,
         };
         await apiClient.createUser(payload);
         toast.success("User created.");
@@ -376,6 +384,16 @@ export default function UsersPage() {
   const reportsToOptions = managers.filter(
     (manager) =>
       (!editingUser || manager.userId !== editingUser.userId) &&
+      (!form.companyId || manager.companyId === form.companyId),
+  );
+  const supervisorOptions = managers.filter(
+    (manager) =>
+      manager.roleId === ROLE.SUPERVISOR &&
+      (!form.companyId || manager.companyId === form.companyId),
+  );
+  const hodOptions = managers.filter(
+    (manager) =>
+      manager.roleId === ROLE.HOD &&
       (!form.companyId || manager.companyId === form.companyId),
   );
   const filteredCompany = companies.find(
@@ -629,6 +647,8 @@ export default function UsersPage() {
                     ...current,
                     companyId: Number(value),
                     reportsTo: null,
+                    reportedSupervisorId: null,
+                    reportedHodId: null,
                   }))
                 }
               >
@@ -644,30 +664,83 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>Reports To</Label>
-              <Select
-                value={form.reportsTo ? String(form.reportsTo) : NONE}
-                onValueChange={(v) =>
-                  setForm((f) => ({
-                    ...f,
-                    reportsTo: v === NONE ? null : Number(v),
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>None</SelectItem>
-                  {reportsToOptions.map((m) => (
-                    <SelectItem key={m.userId} value={String(m.userId)}>
-                      {m.firstName} {m.lastName} ({m.roleName})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {editingUser ? (
+              <div className="space-y-1.5">
+                <Label>Reports To</Label>
+                <Select
+                  value={form.reportsTo ? String(form.reportsTo) : NONE}
+                  onValueChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      reportsTo: v === NONE ? null : Number(v),
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>None</SelectItem>
+                    {reportsToOptions.map((manager) => (
+                      <SelectItem key={manager.userId} value={String(manager.userId)}>
+                        {manager.firstName} {manager.lastName} ({manager.roleName})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Reported Supervisor</Label>
+                  <Select
+                    value={form.reportedSupervisorId ? String(form.reportedSupervisorId) : NONE}
+                    onValueChange={(value) =>
+                      setForm((current) => ({
+                        ...current,
+                        reportedSupervisorId: value === NONE ? null : Number(value),
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>None</SelectItem>
+                      {supervisorOptions.map((supervisor) => (
+                        <SelectItem key={supervisor.userId} value={String(supervisor.userId)}>
+                          {supervisor.firstName} {supervisor.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Reported HOD</Label>
+                  <Select
+                    value={form.reportedHodId ? String(form.reportedHodId) : NONE}
+                    onValueChange={(value) =>
+                      setForm((current) => ({
+                        ...current,
+                        reportedHodId: value === NONE ? null : Number(value),
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>None</SelectItem>
+                      {hodOptions.map((hod) => (
+                        <SelectItem key={hod.userId} value={String(hod.userId)}>
+                          {hod.firstName} {hod.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <Label>Department</Label>

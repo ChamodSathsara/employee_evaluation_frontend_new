@@ -542,7 +542,7 @@ class ApiClient {
     return this.get<AdminUser>(`/api/users/${id}`);
   }
   createUser(payload: CreateUserInput) {
-    // POST /api/users — CreateUserDto. Response data is the created UserDto (no temporary password field).
+    // POST /api/users — CreateUserDto with reportedSupervisorId and reportedHodId.
     return this.post<AdminUser>("/api/users", payload);
   }
   updateUser(id: number, payload: UpdateUserInput) {

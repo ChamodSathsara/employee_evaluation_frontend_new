@@ -632,7 +632,8 @@ export interface CreateUserInput {
   companyId: number;
   departmentId: number | null;
   designationId: number | null;
-  reportsTo: number | null;
+  reportedSupervisorId: number | null;
+  reportedHodId: number | null;
 }
 
 // Matches UpdateUserDto
