@@ -55,6 +55,7 @@ import type {
   UserSearchParams,
   PagedResult,
   EmployeeReport,
+  BulkImportSummary,
 } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://localhost:5001";
@@ -132,6 +133,19 @@ class ApiClient {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+  }
+
+  getErrorMessage(error: unknown, fallback: string) {
+    if (!axios.isAxiosError(error)) return fallback;
+    const data = error.response?.data as
+      | { message?: string; title?: string; errors?: Record<string, string[]> }
+      | undefined;
+    if (data?.message) return data.message;
+    if (data?.title) return data.title;
+    const validationMessage = data?.errors
+      ? Object.values(data.errors).flat().find(Boolean)
+      : undefined;
+    return validationMessage ?? error.message ?? fallback;
   }
 
   private async get<T>(url: string, config?: AxiosRequestConfig) {
@@ -585,7 +599,7 @@ class ApiClient {
     // POST /api/bulk-import/excel — multipart/form-data field: file
     const form = new FormData();
     form.append("file", file);
-    return this.post<unknown>("/api/bulk-import/excel", form, {
+    return this.post<BulkImportSummary>("/api/bulk-import/excel", form, {
       headers: { "Content-Type": "multipart/form-data" },
     });
   }

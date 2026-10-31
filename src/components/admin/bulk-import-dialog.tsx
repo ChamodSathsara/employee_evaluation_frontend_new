@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import apiClient from "@/lib/apiClient";
+import type { BulkImportSummary } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +15,8 @@ import {
 import { Download, FileSpreadsheet, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 export function BulkImportDialog({
   onImported,
 }: {
@@ -22,11 +25,19 @@ export function BulkImportDialog({
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [successSummary, setSuccessSummary] = useState<BulkImportSummary | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function reset() {
+  function clearFile() {
     setFile(null);
     if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function reset() {
+    clearFile();
+    setSuccessSummary(null);
+    setErrorMessage(null);
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -35,31 +46,53 @@ export function BulkImportDialog({
     if (!nextOpen) reset();
   }
 
+  function rejectFile(message: string) {
+    setErrorMessage(message);
+    setSuccessSummary(null);
+    clearFile();
+    toast.error(message);
+  }
+
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
-    if (selected && !selected.name.toLowerCase().endsWith(".xlsx")) {
-      toast.error("Select an Excel .xlsx workbook.");
-      reset();
+    setErrorMessage(null);
+    setSuccessSummary(null);
+
+    if (!selected) {
+      setFile(null);
+      return;
+    }
+    if (!selected.name.toLowerCase().endsWith(".xlsx")) {
+      rejectFile("Select an Excel .xlsx workbook.");
+      return;
+    }
+    if (selected.size > MAX_FILE_SIZE) {
+      rejectFile("The Excel workbook must be 10 MB or smaller.");
       return;
     }
     setFile(selected);
   }
 
-  async function handleUpload() {
+  async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     if (!file) {
-      toast.error("Select an Excel workbook first.");
+      setErrorMessage("Select an Excel workbook first.");
       return;
     }
 
     setIsUploading(true);
+    setErrorMessage(null);
+    setSuccessSummary(null);
     try {
-      await apiClient.bulkImportExcel(file);
+      const response = await apiClient.bulkImportExcel(file);
       await onImported?.();
-      toast.success("Departments, designations, and users imported successfully.");
-      setOpen(false);
-      reset();
-    } catch {
-      toast.error("Could not import the workbook. Check the sheet names and column values.");
+      setSuccessSummary(response.data);
+      clearFile();
+      toast.success(response.message ?? "Excel data imported successfully.");
+    } catch (error) {
+      const message = apiClient.getErrorMessage(error, "Could not import the workbook.");
+      setErrorMessage(message);
+      toast.error(message);
     } finally {
       setIsUploading(false);
     }
@@ -68,46 +101,41 @@ export function BulkImportDialog({
   return (
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>
-        <FileSpreadsheet className="h-4 w-4" /> Bulk import Excel
+        <FileSpreadsheet className="h-4 w-4" /> Employee Bulk Import
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Bulk import from Excel</DialogTitle>
+            <DialogTitle>Employee Bulk Import</DialogTitle>
             <DialogDescription>
-              Import departments, designations, and users together from one .xlsx workbook.
+              Bulk-create new employees from one Excel worksheet. Existing employees are not updated.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <form className="space-y-4" onSubmit={handleUpload}>
             <div className="rounded-lg border border-border bg-muted/40 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm font-medium">Required workbook sheets</p>
+                <div>
+                  <p className="text-sm font-medium">Required sheet: Employee Import</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Companies, departments, and designations are created automatically when needed.
+                  </p>
+                </div>
                 <Button variant="outline" size="sm" asChild>
                   <a href="/employee-bulk-import-template.xlsx" download>
                     <Download className="h-4 w-4" /> Download template
                   </a>
                 </Button>
               </div>
-              <div className="mt-3 space-y-3 text-xs text-muted-foreground">
-                <div>
-                  <p className="font-medium text-foreground">Departments</p>
-                  <p>DepartmentName · Description</p>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Designations</p>
-                  <p>DesignationName</p>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Users</p>
-                  <p className="leading-relaxed">
-                    EmployeeNo · FirstName · LastName · Email · Password · RoleName ·
-                    CompanyName · DepartmentName · DesignationName ·
-                    ReportedSupervisorEmployeeNo · ReportedHodEmployeeNo · IsActive
-                  </p>
-                </div>
-              </div>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                EmployeeNo · FirstName · LastName · Email · Password · RoleName · CompanyName ·
+                DepartmentName · DesignationName · ReportedSupervisorEmployeeNo ·
+                ReportedHodEmployeeNo · IsActive
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                IsActive accepts 1/0 or TRUE/FALSE. CEO reporting fields may be blank.
+              </p>
             </div>
 
             <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border px-6 py-8 text-center transition-colors hover:border-primary/50 hover:bg-muted/40">
@@ -117,8 +145,8 @@ export function BulkImportDialog({
               </span>
               <span className="mt-1 text-xs text-muted-foreground">
                 {file
-                  ? `${(file.size / 1024).toFixed(1)} KB`
-                  : "Only .xlsx files are supported"}
+                  ? `${(file.size / 1024 / 1024).toFixed(2)} MB`
+                  : "Only .xlsx files up to 10 MB are supported"}
               </span>
               <input
                 ref={inputRef}
@@ -129,21 +157,37 @@ export function BulkImportDialog({
                 disabled={isUploading}
               />
             </label>
-          </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isUploading}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpload} disabled={!file || isUploading}>
-              {isUploading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4" />
-              )}
-              {isUploading ? "Importing…" : "Import workbook"}
-            </Button>
-          </DialogFooter>
+            {errorMessage && (
+              <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                {errorMessage}
+              </div>
+            )}
+
+            {successSummary && (
+              <div aria-live="polite" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                  Excel data imported successfully.
+                </p>
+                <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div><dt className="text-muted-foreground">Companies created</dt><dd className="font-semibold">{successSummary.companiesCreated}</dd></div>
+                  <div><dt className="text-muted-foreground">Departments created</dt><dd className="font-semibold">{successSummary.departmentsCreated}</dd></div>
+                  <div><dt className="text-muted-foreground">Designations created</dt><dd className="font-semibold">{successSummary.designationsCreated}</dd></div>
+                  <div><dt className="text-muted-foreground">Users created</dt><dd className="font-semibold">{successSummary.usersCreated}</dd></div>
+                </dl>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isUploading}>
+                Close
+              </Button>
+              <Button type="submit" disabled={!file || isUploading}>
+                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {isUploading ? "Importing…" : "Import employees"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>

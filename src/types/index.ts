@@ -5,6 +5,13 @@ export interface ApiResponse<T> {
   data: T;
 }
 
+export interface BulkImportSummary {
+  companiesCreated: number;
+  departmentsCreated: number;
+  designationsCreated: number;
+  usersCreated: number;
+}
+
 export type RoleId = 1 | 2 | 3 | 4 | 5 | 6;
 export const ROLE = {
   ADMIN: 1,
