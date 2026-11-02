@@ -66,7 +66,6 @@ type UserFormState = {
   companyId: number | null;
   departmentId: number | null;
   designationId: number | null;
-  reportsTo: number | null;
   reportedSupervisorId: number | null;
   reportedHodId: number | null;
 };
@@ -81,7 +80,6 @@ const emptyForm: UserFormState = {
   companyId: null,
   departmentId: null,
   designationId: null,
-  reportsTo: null,
   reportedSupervisorId: null,
   reportedHodId: null,
 };
@@ -175,6 +173,10 @@ export default function UsersPage() {
   }
 
   function openEdit(u: AdminUser) {
+    const reportingManager = managers.find(
+      (manager) => manager.userId === u.reportsTo,
+    );
+
     setEditingUser(u);
     setForm({
       employeeNo: u.employeeNo,
@@ -186,9 +188,10 @@ export default function UsersPage() {
       companyId: u.companyId,
       departmentId: u.departmentId,
       designationId: u.designationId,
-      reportsTo: u.reportsTo,
-      reportedSupervisorId: null,
-      reportedHodId: null,
+      reportedSupervisorId:
+        reportingManager?.roleId === ROLE.SUPERVISOR ? u.reportsTo : null,
+      reportedHodId:
+        reportingManager?.roleId === ROLE.HOD ? u.reportsTo : null,
     });
     setDialogOpen(true);
   }
@@ -210,7 +213,10 @@ export default function UsersPage() {
           companyId: form.companyId,
           departmentId: form.departmentId,
           designationId: form.designationId,
-          reportsTo: form.reportsTo,
+          reportedSupervisorId:
+            form.roleId === ROLE.EMPLOYEE ? form.reportedSupervisorId : null,
+          reportedHodId:
+            form.roleId === ROLE.EMPLOYEE ? form.reportedHodId : null,
         };
         await apiClient.updateUser(editingUser.userId, payload);
         toast.success("User updated.");
@@ -383,11 +389,6 @@ export default function UsersPage() {
     }
   }
 
-  const reportsToOptions = managers.filter(
-    (manager) =>
-      (!editingUser || manager.userId !== editingUser.userId) &&
-      (!form.companyId || manager.companyId === form.companyId),
-  );
   const supervisorOptions = managers.filter(
     (manager) =>
       manager.roleId === ROLE.SUPERVISOR &&
@@ -673,7 +674,6 @@ export default function UsersPage() {
                   setForm((current) => ({
                     ...current,
                     companyId: Number(value),
-                    reportsTo: null,
                     reportedSupervisorId: null,
                     reportedHodId: null,
                   }))
@@ -691,41 +691,23 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
-            {editingUser ? (
-              <div className="space-y-1.5">
-                <Label>Reports To</Label>
-                <Select
-                  value={form.reportsTo ? String(form.reportsTo) : NONE}
-                  onValueChange={(v) =>
-                    setForm((f) => ({
-                      ...f,
-                      reportsTo: v === NONE ? null : Number(v),
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="None" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>None</SelectItem>
-                    {reportsToOptions.map((manager) => (
-                      <SelectItem key={manager.userId} value={String(manager.userId)}>
-                        {manager.firstName} {manager.lastName} ({manager.roleName})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
+            {form.roleId === ROLE.EMPLOYEE && (
               <>
                 <div className="space-y-1.5">
                   <Label>Reported Supervisor</Label>
                   <Select
-                    value={form.reportedSupervisorId ? String(form.reportedSupervisorId) : NONE}
+                    value={
+                      form.reportedSupervisorId
+                        ? String(form.reportedSupervisorId)
+                        : NONE
+                    }
                     onValueChange={(value) =>
                       setForm((current) => ({
                         ...current,
-                        reportedSupervisorId: value === NONE ? null : Number(value),
+                        reportedSupervisorId:
+                          value === NONE ? null : Number(value),
+                        reportedHodId:
+                          value === NONE ? current.reportedHodId : null,
                       }))
                     }
                   >
@@ -735,7 +717,10 @@ export default function UsersPage() {
                     <SelectContent>
                       <SelectItem value={NONE}>None</SelectItem>
                       {supervisorOptions.map((supervisor) => (
-                        <SelectItem key={supervisor.userId} value={String(supervisor.userId)}>
+                        <SelectItem
+                          key={supervisor.userId}
+                          value={String(supervisor.userId)}
+                        >
                           {supervisor.firstName} {supervisor.lastName}
                         </SelectItem>
                       ))}
@@ -750,6 +735,8 @@ export default function UsersPage() {
                       setForm((current) => ({
                         ...current,
                         reportedHodId: value === NONE ? null : Number(value),
+                        reportedSupervisorId:
+                          value === NONE ? current.reportedSupervisorId : null,
                       }))
                     }
                   >

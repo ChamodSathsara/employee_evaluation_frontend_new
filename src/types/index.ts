@@ -652,7 +652,8 @@ export interface UpdateUserInput {
   companyId: number;
   departmentId: number | null;
   designationId: number | null;
-  reportsTo: number | null;
+  reportedSupervisorId: number | null;
+  reportedHodId: number | null;
 }
 
 // Matches UserSearchDto (query params on GET /api/users)
